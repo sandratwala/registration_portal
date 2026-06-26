@@ -1,149 +1,137 @@
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-from typing import List
-from database import (
-    create_table,
-    add_students, get_all_students, get_students_by_id, update_student, delete_student_by_id,
-    add_teacher, get_all_teachers, get_teacher_by_id, update_teacher, delete_teacher_by_id,
-    add_course, get_all_courses, get_course_by_id, update_course, delete_course_by_id
-)
 
-app = FastAPI()
-create_table()
+import sqlite3
+from contextlib import contextmanager
 
-class StudentsSchema(BaseModel):
-    name: str
-    age: int
-    email: str
-    country: str
-    id_number: int
+sqlite_file_name = "school.db"
 
-class TeacherSchema(BaseModel):
-    name: str
-    course_expertise: str
-    email: str
-    years_of_experience: int
-    teacher_id: int
+@contextmanager
+def get_connection():
+    connection = sqlite3.connect(sqlite_file_name)
+    connection.row_factory = sqlite3.Row
+    try:
+        yield connection
+        connection.commit()
+    finally:
+        connection.close()
 
-class CourseSchema(BaseModel):
-    title: str
-    course_code: str
-    ratings: float
-    department: str
-    max_students: int
+def create_table():
+    with get_connection() as connection:
+        connection.execute('''CREATE TABLE IF NOT EXISTS students (
+                           
+                           id INTEGER PRIMARY KEY AUTOINCREMENT,
+                           name TEXT NOT NULL,
+                           age INTEGER NOT NULL,
+                           email TEXT NOT NULL,
+                           country TEXT NOT NULL,
+                           id_number INTEGER NOT NULL
+                           )''')
+        
+        connection.execute('''CREATE TABLE IF NOT EXISTS teachers (
+                           
+                           id INTEGER PRIMARY KEY AUTOINCREMENT,
+                           name TEXT NOT NULL,
+                           department INTEGER NOT NULL,
+                           email TEXT NOT NULL,
+                           salary TEXT NOT NULL
+                           id_number NOT NULL
+                           )''')
+        
 
-@app.get("/")
-def home():
-    return {"message": "Welcome to the Student Registration portal!"}
+        connection.execute('''CREATE TABLE IF NOT EXISTS courses (
+                           
+                           id INTEGER PRIMARY KEY AUTOINCREMENT,
+                           name TEXT NOT NULL,
+                           code INTEGER NOT NULL,
+                           semester TEXT NOT NULL,
+                           department TEXT NOT NULL
+                           credits NOT NULL
+                           )''')
 
-@app.post('/students')
-def register_students(student: StudentsSchema):
-    add_students(
-        name=student.name,
-        age=student.age,
-        email=student.email,
-        country=student.country,
-        id_number=student.id_number
+
+def add_students(name, age, email, country, id_number):
+    with get_connection() as connection:
+        connection.execute(
+        'INSERT INTO students (name, age, email, country, id_number) VALUES (?, ?, ?, ?, ?)',
+        (name, age, email, country,  id_number),
     )
-    return {'status': 'Success', 'message': f'Student {student.name} registered successfully!'}
 
-@app.get('/students')
-def list_students():
-    students = get_all_students()
-    return students
+def get_students():
+    with get_connection() as connection:
+        return connection.execute('SELECT *FROM students'). fetchall()
+    
+def get_students(student_id):
+    with get_connection() as connection:
+        return connection.execute('SELECT *FROM students WHERE id = ?', (student_id)). fetchone()
+def update_student(student_id, name, age, email, id_number):
+    with get_connection() as connection:
+        connection.execute(
+            '''UPDATE students
+            SET name = ?, age = ?, email = ?, id_number = ?
+            WHERE id = ?''',
+            (name, age, email, id_number, student_id)
+            )
+def delete_student(student_id):
+    with get_connection() as connection:
+        connection.execute('DELETE FROM students WHERE id = ?', (student_id,))
 
-@app.get('/students/{id}')
-def student_detail(id: int):
-    student = get_students_by_id(id)
-    if student is None:
-        raise HTTPException(status_code=404, detail="Student not found")
-    return student
 
-@app.put('/students/{id}')
-def edit_student(id: int, updated_data: StudentsSchema):
-    student = get_students_by_id(id)
-    if student is None:
-        raise HTTPException(status_code=404, detail='Student not found')
 
-    update_student(
-        student_id=id,
-        name=updated_data.name,
-        age=updated_data.age,
-        email=updated_data.email,
-        country=updated_data.country,
-        id_number=updated_data.id_number
-    )
-    return {"status": "Success", "message": f"Student profile with ID {id} has been fully updated!"}
 
-@app.delete('/students/{id}')
-def remove_student(id: int):
-    student = get_students_by_id(id)
-    if student is None:
-        raise HTTPException(status_code=404, detail="Student not found")
 
-    delete_student_by_id(id)
-    return {"status": "Success", "message": f"Student with ID {id} has been permanently deleted."}
 
-@app.post("/teachers")
-def register_teacher(teacher: TeacherSchema):
-    add_teacher(teacher.name, teacher.course_expertise, teacher.email, teacher.years_of_experience, teacher.teacher_id)
-    return {"status": "Success", "message": f"Teacher {teacher.name} registered!"}
+def add_teachers(name, department, email, salary, id_number):
+    with get_connection as connection:
+        connection.execute(
+            'INSERT INTO teachers (name, department, email, salary, id_number) VALUES (?, ?, ?, ?, ?)'
+            (name, department, email, salary,id_number),
+        )
 
-@app.get("/teachers")
-def list_teachers():
-    return get_all_teachers()
+def get_teachers():
+    with get_connection() as connection:
+        return connection.execute('SELECT *FROM teachers'). fetchall()
+    
+def get_teachers(teacher_id):
+    with get_connection() as connection:
+        return connection.execute('SELECT *FROM students WHERE id = ?', (teacher_id)). fetchone()
+    
+def update_teacher(teacher_id,name,subject,email,employee_id):
+    with get_connection as connection:
+        connection.execute(
+            '''UPDATE teachers
+            SET name= ?,subject=?, email= ?,employee_id= ?
+            WHERE id= ?''',(name, subject, email, employee_id, teacher_id)
+            )
+def delete_teacher(teacher_id):
+    with get_connection as connection:
+        connection.execute('DELETE FROM teachers WHERE id = ?', (teacher_id,))
 
-@app.get("/teachers/{id}")
-def teacher_detail(id: int):
-    teacher = get_teacher_by_id(id)
-    if teacher is None:
-        raise HTTPException(status_code=404, detail="Teacher not found")
-    return teacher
 
-@app.put("/teachers/{id}")
-def edit_teacher(id: int, updated_data: TeacherSchema):
-    teacher = get_teacher_by_id(id)
-    if teacher is None:
-        raise HTTPException(status_code=404, detail="Teacher not found")
-    update_teacher(id, updated_data.name, updated_data.course_expertise, updated_data.email, updated_data.years_of_experience, updated_data.teacher_id)
-    return {"status": "Success", "message": f"Teacher ID {id} updated!"}
 
-@app.delete("/teachers/{id}")
-def remove_teacher(id: int):
-    teacher = get_teacher_by_id(id)
-    if teacher is None:
-        raise HTTPException(status_code=404, detail="Teacher not found")
-    delete_teacher_by_id(id)
-    return {"status": "Success", "message": f"Teacher ID {id} deleted!"}
 
-@app.post("/courses")
-def register_course(course: CourseSchema):
-    add_course(course.title, course.course_code, course.ratings, course.department, course.max_students)
-    return {"status": "Success", "message": f"Course {course.title} created!"}
 
-@app.get("/courses")
-def list_courses():
-    return get_all_courses()
+def add_courses(name, course_id, semester, department, credits):
+    with get_connection as connection:
+        connection.execute(
+            'INSERT INTO courses (name, course_id, semester, department, credits) ) VALUES (?, ?, ?, ?, ?)'
+            (name,course_id, semester, department, credits),
+        )
 
-@app.get("/courses/{id}")
-def course_detail(id: int):
-    course = get_course_by_id(id)
-    if course is None:
-        raise HTTPException(status_code=404, detail="Course not found")
-    return course
-
-@app.put("/courses/{id}")
-def edit_course(id: int, updated_data: CourseSchema):
-    course = get_course_by_id(id)
-    if course is None:
-        raise HTTPException(status_code=404, detail="Course not found")
-    update_course(id, updated_data.title, updated_data.course_code, updated_data.ratings, updated_data.department, updated_data.max_students)
-    return {"status": "Success", "message": f"Course ID {id} updated!"}
-
-@app.delete("/courses/{id}")
-def remove_course(id: int):
-    course = get_course_by_id(id)
-    if course is None:
-        raise HTTPException(status_code=404, detail="Course not found")
-    delete_course_by_id(id)
-    return {"status": "Success", "message": f"Course ID {id} deleted!"}
+def get_courses():
+    with get_connection() as connection:
+        return connection.execute('SELECT *FROM students'). fetchall()
+    
+def get_courses(course_id):
+    with get_connection() as connection:
+        return connection.execute('SELECT *FROM courses WHERE id = ?', (course_id)). fetchone()
+    
+def update_course(course_id,title,course_code,department,max_capacity):
+    with get_connection as connection:
+        connection.execute(
+            '''UPDATE courses
+            SET title= ?,course_code=?,department=?,max_capacity=?
+            WHERE id=?'''
+            (title, course_code, department, max_capacity, course_id)
+            )
+def delete_course(course_id):
+    with get_connection  as connection:
+        connection.execute('DELETE FROM courses WHERE id= ?',(course_id))

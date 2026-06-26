@@ -1,135 +1,100 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from pydantic import BaseModel
-from database import (
-    create_table,
-    add_student, get_all_students, get_students_by_id, update_student, delete_student_by_id,
-    add_teacher, get_all_teachers, get_teacher_by_id, update_teacher, delete_teacher_by_id,
-    add_course, get_all_courses, get_course_by_id, update_course, delete_course_by_id
-)
+from database import (create_table, add_students, get_students, add_teachers, get_teachers, add_courses, get_courses)
 
 app = FastAPI()
-create_table()
-
-class StudentSchema(BaseModel):
-    name: str
-    age: int
-    email: str
-    country: str
-    id_number: int
-
-class TeacherSchema(BaseModel):
-    name: str
-    course_expertise: str
-    email: str
-    years_of_experience: int
-    teacher_id: int
-
-class CourseSchema(BaseModel):
-    title: str
-    course_code: str
-    ratings: float
-    department: str
-    max_students: int
-
 @app.get("/")
 def home():
-    return {"message": "Welcome to the Student Registration portal!"}
+    return{"message":"welcome to my API server"}
+@app.get("/students")
 
-
-@app.post('/students')
-def register_student(student: StudentSchema):
-    add_student(student.name, student.age, student.email, student.country, student.id_number)
-    return {'status': 'Success', 'message': f'Student {student.name} registered successfully!'}
-
-@app.get('/students')
 def list_students():
-    return get_all_students()
+    students = get_students()
+    return students
 
-@app.get('/students/{id}')
-def student_detail(id: int):
-    student = get_students_by_id(id)
-    if student is None:
-        raise HTTPException(status_code=404, detail="Student not found")
+class Student(BaseModel):
+    name:str
+    age:int
+    email:str
+    country:str
+    id_number:int
+@app.post("/students")
+def register_student(student: Student):
+    add_students(student.name, student.age, student.email, student.country, student.id_number)
+
+    return{"message":"student registered","student":student}
+
+@app.get("students|{id}")
+def student_detail(id:int):
+    student = get_students(id)
     return student
 
-@app.put('/students/{id}')
-def edit_student(id: int, updated_data: StudentSchema):
-    student = get_students_by_id(id)
-    if student is None:
-        raise HTTPException(status_code=404, detail="Student not found")
-    update_student(id, updated_data.name, updated_data.age, updated_data.email, updated_data.country, updated_data.id_number)
-    return {"status": "Success", "message": f"Student profile with ID {id} has been fully updated!"}
+@app.put("/students/{id}")
+def update_teacher (id:int, student:Student):
+    update_teacher(student.name, student.email, student.department, student.salary, student.id_number)
+    return{"message":"student updated", "student": student}
 
-@app.delete('/students/{id}')
-def remove_student(id: int):
-    student = get_students_by_id(id)
-    if student is None:
-        raise HTTPException(status_code=404, detail="Student not found")
-    delete_student_by_id(id)
-    return {"status": "Success", "message": f"Student with ID {id} has been permanently deleted."}
+@app.delete("/students/{id}")
+def delete_student(id:int):
+    delete_student(id)
+    return {"message": "student details deleted"}
 
+class Teacher(BaseModel):
+    name:str
+    email: str
+    salary: float
+    department: str
+    idnumber:int
 
 @app.post("/teachers")
-def register_teacher(teacher: TeacherSchema):
-    add_teacher(teacher.name, teacher.course_expertise, teacher.email, teacher.years_of_experience, teacher.teacher_id)
-    return {"status": "Success", "message": f"Teacher {teacher.name} registered!"}
+def register_teacher(teacher: Teacher):
+    add_teachers(teacher.name, teacher.email, teacher.salary, teacher.department, teacher.id_number)
 
-@app.get("/teachers")
-def list_teachers():
-    return get_all_teachers()
+    return{"message":"teacher registered","teacher":teacher}
 
-@app.get("/teachers/{id}")
-def teacher_detail(id: int):
-    teacher = get_teacher_by_id(id)
-    if teacher is None:
-        raise HTTPException(status_code=404, detail="Teacher not found")
+@app.get("teachers|{id}")
+def teacher_detail(id:int):
+    teacher = get_teachers(id)
     return teacher
 
 @app.put("/teachers/{id}")
-def edit_teacher(id: int, updated_data: TeacherSchema):
-    teacher = get_teacher_by_id(id)
-    if teacher is None:
-        raise HTTPException(status_code=404, detail="Teacher not found")
-    update_teacher(id, updated_data.name, updated_data.course_expertise, updated_data.email, updated_data.years_of_experience, updated_data.teacher_id)
-    return {"status": "Success", "message": f"Teacher ID {id} updated!"}
+def update_teacher (id:int, teacher:Teacher):
+    update_teacher(teacher.name, teacher.email, teacher.department, teacher.salary, teacher.id_number)
+    return{"message":"teacher updated", "teacher": teacher}
 
 @app.delete("/teachers/{id}")
-def remove_teacher(id: int):
-    teacher = get_teacher_by_id(id)
-    if teacher is None:
-        raise HTTPException(status_code=404, detail="Teacher not found")
-    delete_teacher_by_id(id)
-    return {"status": "Success", "message": f"Teacher ID {id} deleted!"}
+def delete_teacher(id:int):
+    delete_teacher(id)
+    return {"message": "teacher details deleted"}
 
+
+
+class Course(BaseModel):
+    name:str
+    code: str
+    semester: float
+    department: str
+    credits:int
 
 @app.post("/courses")
-def register_course(course: CourseSchema):
-    add_course(course.title, course.course_code, course.ratings, course.department, course.max_students)
-    return {"status": "Success", "message": f"Course {course.title} created!"}
+def register_teacher(course: Course):
+    add_teachers(course.name, course.code, course.semester, course.department, course.credit)
 
-@app.get("/courses")
-def list_courses():
-    return get_all_courses()
+    return{"message":"course registered","course":course}
 
-@app.get("/courses/{id}")
-def course_detail(id: int):
-    course = get_course_by_id(id)
-    if course is None:
-        raise HTTPException(status_code=404, detail="Course not found")
+@app.get("course|{id}")
+def course_detail(id:int):
+    course = get_courses(id)
     return course
 
-@app.put("/courses/{id}")
-def edit_course(id: int, updated_data: CourseSchema):
-    course = get_course_by_id(id)
-    if course is None:
-        raise HTTPException(status_code=404, detail="Course not found")
-    update_course(id, updated_data.title, updated_data.course_code, updated_data.ratings, updated_data.department, updated_data.max_students)
-    return {"status": "Success", "message": f"Course ID {id} updated!"}
+@app.put("/course/{id}")
+def update_course (id:int, course:Course):
+    update_course(id, course.name, course.code, course.semester, course.department, course.credit)
+    return{"message":"course updated", "teacher": course}
 
-@app.delete("/courses/{id}")
-def remove_course(id: int):
-    course = get_course_by_id(id)
-    if course is None:
-        raise HTTPException(status_code=404, detail="Course not found")
-    delete_course_by_id(id)
-    return {"status": "Success", "message": f"Course ID {id} deleted!"}
+@app.delete("/course/{id}")
+def delete_course(id:int):
+    delete_course(id)
+    return {"message": "course details deleted"}
+
+
